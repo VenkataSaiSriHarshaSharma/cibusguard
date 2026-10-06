@@ -14,6 +14,7 @@ import {
   Plus,
   AlertTriangle,
   Flame,
+  FileText,
 } from 'lucide-react';
 import { StorageZone } from '../types';
 
@@ -27,6 +28,7 @@ interface SidebarProps {
   wasteAversionRate: number;
   onOpenQuickAdd: () => void;
   onOpenAudit: () => void;
+  onOpenReportModal?: () => void;
   selectedZoneFilter: string;
   setSelectedZoneFilter: (zone: string) => void;
 }
@@ -39,6 +41,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   wasteAversionRate,
   onOpenQuickAdd,
   onOpenAudit,
+  onOpenReportModal,
   selectedZoneFilter,
   setSelectedZoneFilter,
 }) => {
@@ -228,6 +231,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <Sparkles className="w-3 h-3 text-emerald-600" />
           <span>Run AI Spoilage Audit</span>
         </button>
+
+        {onOpenReportModal && (
+          <button
+            onClick={onOpenReportModal}
+            className="w-full py-1.5 px-3 text-[11px] font-medium text-slate-700 hover:text-slate-900 hover:bg-white border border-slate-200 rounded-lg transition-colors flex items-center justify-center gap-1.5"
+            title="Download Final Summary & SDG Audit Report"
+          >
+            <FileText className="w-3 h-3 text-slate-500" />
+            <span>Download Summary Report</span>
+          </button>
+        )}
       </div>
     </aside>
   );

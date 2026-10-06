@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, Camera, Plus, BellRing, Sparkles, ChevronRight, Leaf } from 'lucide-react';
+import { Menu, Camera, Plus, BellRing, Sparkles, ChevronRight, Leaf, FileText } from 'lucide-react';
 import { NavTab } from './Sidebar';
 
 interface TopHeaderProps {
@@ -7,6 +7,7 @@ interface TopHeaderProps {
   onOpenQuickAdd: () => void;
   onOpenVisionScan: () => void;
   onToggleMobileSidebar: () => void;
+  onOpenReportModal: () => void;
   criticalCount: number;
 }
 
@@ -15,6 +16,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   onOpenQuickAdd,
   onOpenVisionScan,
   onToggleMobileSidebar,
+  onOpenReportModal,
   criticalCount,
 }) => {
   const tabTitles: Record<NavTab, string> = {
@@ -55,8 +57,17 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
       {/* Right: Actions */}
       <div className="flex items-center gap-2">
         <button
+          onClick={onOpenReportModal}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors"
+          title="Download Final Summary & SDG Audit Report"
+        >
+          <FileText className="w-3.5 h-3.5 text-slate-600" />
+          <span className="hidden sm:inline">Summary Report</span>
+        </button>
+
+        <button
           onClick={onOpenVisionScan}
-          className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors"
+          className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors"
         >
           <Camera className="w-3.5 h-3.5 text-slate-600" />
           <span>Scan Receipt / Shelf</span>

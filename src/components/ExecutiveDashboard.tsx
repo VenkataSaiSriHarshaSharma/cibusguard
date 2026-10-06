@@ -18,6 +18,7 @@ import {
   Plus,
   Camera,
   ShieldCheck,
+  FileText,
 } from 'lucide-react';
 import { FoodItem, DonationDispatch } from '../types';
 import { NavTab } from './Sidebar';
@@ -29,6 +30,7 @@ interface ExecutiveDashboardProps {
   onOpenQuickAdd: () => void;
   onOpenVisionScan: () => void;
   onOpenAudit: () => void;
+  onOpenReportModal?: () => void;
   onConsumeItem: (id: string) => void;
   onDonateItem: (item: FoodItem) => void;
   onExtendFreezer: (id: string) => void;
@@ -41,6 +43,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
   onOpenQuickAdd,
   onOpenVisionScan,
   onOpenAudit,
+  onOpenReportModal,
   onConsumeItem,
   onDonateItem,
   onExtendFreezer,
@@ -144,6 +147,17 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
               <HeartHandshake className="w-3.5 h-3.5" />
               <span>Dispatch Rescue</span>
             </button>
+
+            {onOpenReportModal && (
+              <button
+                onClick={onOpenReportModal}
+                className="px-3 py-2 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors inline-flex items-center gap-1.5"
+                title="Download Final Audit & SDG Summary Report"
+              >
+                <FileText className="w-3.5 h-3.5 text-slate-600" />
+                <span>Download Report</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

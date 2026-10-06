@@ -102,3 +102,12 @@ export interface ZeroWasteRecipe {
   instructions: string[];
   sdgBenefit: string;
 }
+
+export interface ActivityLogItem {
+  id: string;
+  timestamp: string;
+  type: 'add' | 'consume' | 'donate' | 'freeze' | 'discard' | 'quantity' | 'audit';
+  description: string;
+  impactNote?: string;
+}
+

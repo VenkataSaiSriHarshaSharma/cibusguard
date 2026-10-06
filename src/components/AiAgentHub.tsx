@@ -19,15 +19,19 @@ interface AiAgentHubProps {
   items: FoodItem[];
   onDonateCandidate: (itemName: string) => void;
   onExtendFreezerByName: (itemName: string) => void;
+  latestAudit?: AgentAudit | null;
+  onAuditComplete?: (audit: AgentAudit) => void;
 }
 
 export const AiAgentHub: React.FC<AiAgentHubProps> = ({
   items,
   onDonateCandidate,
   onExtendFreezerByName,
+  latestAudit,
+  onAuditComplete,
 }) => {
   const [isRunningAudit, setIsRunningAudit] = useState(false);
-  const [auditResult, setAuditResult] = useState<AgentAudit | null>(null);
+  const [auditResult, setAuditResult] = useState<AgentAudit | null>(latestAudit || null);
 
   const [isGeneratingRecipes, setIsGeneratingRecipes] = useState(false);
   const [recipes, setRecipes] = useState<ZeroWasteRecipe[] | null>(null);
@@ -52,6 +56,9 @@ export const AiAgentHub: React.FC<AiAgentHubProps> = ({
       });
       const data = await res.json();
       setAuditResult(data);
+      if (onAuditComplete) {
+        onAuditComplete(data);
+      }
     } catch (err) {
       console.error(err);
     } finally {

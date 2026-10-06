@@ -8,14 +8,40 @@ import { SdgComplianceHub } from './components/SdgComplianceHub';
 import { DonationDispatchView } from './components/DonationDispatchView';
 import { AiAgentHub } from './components/AiAgentHub';
 import { VisionScanModal } from './components/VisionScanModal';
-import { FoodItem, DonationDispatch } from './types';
+import { SummaryReportModal } from './components/SummaryReportModal';
+import { FoodItem, DonationDispatch, AgentAudit, ActivityLogItem } from './types';
 import { INITIAL_FOOD_ITEMS, INITIAL_DISPATCHES, calculateDateOffset } from './data/initialData';
 import { Check, Info, X } from 'lucide-react';
+
+const INITIAL_LOGS: ActivityLogItem[] = [
+  {
+    id: 'act-1',
+    timestamp: '2026-10-04 14:30',
+    type: 'donate',
+    description: 'Dispatched 28.5 kg surplus vegetable soup and breads to Metropolitan Food Bank',
+    impactNote: 'Rescued 62 nutritious meals (SDG 2)',
+  },
+  {
+    id: 'act-2',
+    timestamp: '2026-10-05 08:15',
+    type: 'add',
+    description: 'Recorded batch PREP-992 (Roasted Vegetable Lasagna, 6 trays) via Kitchen Staff channel',
+    impactNote: 'HACCP 2-stage cooling verified',
+  },
+  {
+    id: 'act-3',
+    timestamp: '2026-10-05 11:15',
+    type: 'donate',
+    description: 'Dispatched 21.0 kg Greek yogurt and Gala apples to Hope Community Pantry',
+    impactNote: 'Rescued 46 nutritious meals (SDG 2)',
+  },
+];
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [selectedZoneFilter, setSelectedZoneFilter] = useState<string>('all');
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   const [items, setItems] = useState<FoodItem[]>(() => {
     try {
@@ -34,6 +60,17 @@ export default function App() {
       return INITIAL_DISPATCHES;
     }
   });
+
+  const [activityLog, setActivityLog] = useState<ActivityLogItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('cibusguard_activity_log');
+      return saved ? JSON.parse(saved) : INITIAL_LOGS;
+    } catch {
+      return INITIAL_LOGS;
+    }
+  });
+
+  const [latestAudit, setLatestAudit] = useState<AgentAudit | null>(null);
 
   const [isVisionScanOpen, setIsVisionScanOpen] = useState(false);
   const [preselectedDonationItem, setPreselectedDonationItem] = useState<FoodItem | null>(null);
@@ -56,6 +93,14 @@ export default function App() {
     }
   }, [dispatches]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem('cibusguard_activity_log', JSON.stringify(activityLog));
+    } catch (e) {
+      console.warn('Storage error:', e);
+    }
+  }, [activityLog]);
+
   const showNotification = (message: string, type: 'success' | 'info' = 'success') => {
     setNotification({ message, type });
     setTimeout(() => {
@@ -63,17 +108,46 @@ export default function App() {
     }, 2800);
   };
 
+  const getNowTimestamp = () => {
+    return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
   // Add items
   const handleAddItems = (newItems: FoodItem[]) => {
     setItems((prev) => [...newItems, ...prev]);
+
+    // Log operational activity
+    const itemNames = newItems.map((i) => i.name).slice(0, 3).join(', ');
+    const logEntry: ActivityLogItem = {
+      id: `act-${Date.now()}`,
+      timestamp: `${new Date().toLocaleDateString()} ${getNowTimestamp()}`,
+      type: 'add',
+      description: `Ingested ${newItems.length} item(s): ${itemNames}${newItems.length > 3 ? '...' : ''} via ${newItems[0]?.source || 'user'} channel`,
+      impactNote: `Added to monitored stock (SDG 12.3)`,
+    };
+    setActivityLog((prev) => [logEntry, ...prev]);
+
     showNotification(`Added ${newItems.length} item${newItems.length > 1 ? 's' : ''} to monitored food stock.`);
   };
 
   // Mark item as consumed
   const handleConsumeItem = (id: string) => {
+    const target = items.find((i) => i.id === id);
     setItems((prev) =>
       prev.map((item) => (item.id === id ? { ...item, status: 'consumed' } : item))
     );
+
+    if (target) {
+      const logEntry: ActivityLogItem = {
+        id: `act-${Date.now()}`,
+        timestamp: `${new Date().toLocaleDateString()} ${getNowTimestamp()}`,
+        type: 'consume',
+        description: `Consumed ${target.quantity} ${target.unit} of ${target.name} in kitchen meal prep`,
+        impactNote: `+${target.sdgImpact?.co2AvoidableKg || 2.5}kg CO₂e landfill waste avoided`,
+      };
+      setActivityLog((prev) => [logEntry, ...prev]);
+    }
+
     showNotification('Item marked as consumed. Spoilage avoided for SDG 12.3.');
   };
 
@@ -85,9 +159,11 @@ export default function App() {
 
   // Extend shelf life by freezing
   const handleExtendFreezer = (id: string) => {
+    let targetName = 'Food item';
     setItems((prev) =>
       prev.map((item) => {
         if (item.id === id) {
+          targetName = item.name;
           const newExpDays = item.expiryDays + 90;
           return {
             ...item,
@@ -102,6 +178,16 @@ export default function App() {
         return item;
       })
     );
+
+    const logEntry: ActivityLogItem = {
+      id: `act-${Date.now()}`,
+      timestamp: `${new Date().toLocaleDateString()} ${getNowTimestamp()}`,
+      type: 'freeze',
+      description: `Transferred ${targetName} to Deep Freezer (-18°C) extending shelf life by +90 days`,
+      impactNote: 'Spoilage prevented via temperature control (SDG 3 & 12.3)',
+    };
+    setActivityLog((prev) => [logEntry, ...prev]);
+
     showNotification('Transferred to Deep Freezer. Shelf life extended by 90 days.');
   };
 
@@ -115,23 +201,52 @@ export default function App() {
 
   // Delete / Discard item
   const handleDeleteItem = (id: string) => {
+    const target = items.find((i) => i.id === id);
     setItems((prev) =>
       prev.map((item) => (item.id === id ? { ...item, status: 'discarded' } : item))
     );
+
+    if (target) {
+      const logEntry: ActivityLogItem = {
+        id: `act-${Date.now()}`,
+        timestamp: `${new Date().toLocaleDateString()} ${getNowTimestamp()}`,
+        type: 'discard',
+        description: `Logged discard of ${target.name} (${target.quantity} ${target.unit}) for waste audit log`,
+        impactNote: 'Loss recorded in SDG 12.3 audit metrics',
+      };
+      setActivityLog((prev) => [logEntry, ...prev]);
+    }
+
     showNotification('Item marked as discarded in audit logs.', 'info');
   };
 
   // Adjust item quantity
   const handleUpdateQuantity = (id: string, delta: number) => {
+    let updatedName = '';
+    let finalQty = 1;
+    let unitStr = '';
+
     setItems((prev) =>
       prev.map((item) => {
         if (item.id === id) {
-          const newQty = Math.max(0.1, Number((item.quantity + delta).toFixed(1)));
-          return { ...item, quantity: newQty };
+          updatedName = item.name;
+          unitStr = item.unit;
+          finalQty = Math.max(0.1, Number((item.quantity + delta).toFixed(1)));
+          return { ...item, quantity: finalQty };
         }
         return item;
       })
     );
+
+    if (updatedName) {
+      const logEntry: ActivityLogItem = {
+        id: `act-${Date.now()}`,
+        timestamp: `${new Date().toLocaleDateString()} ${getNowTimestamp()}`,
+        type: 'quantity',
+        description: `Adjusted inventory quantity for ${updatedName} to ${finalQty} ${unitStr}`,
+      };
+      setActivityLog((prev) => [logEntry, ...prev]);
+    }
   };
 
   // Create new Donation Dispatch
@@ -148,7 +263,30 @@ export default function App() {
       )
     );
 
+    const logEntry: ActivityLogItem = {
+      id: `act-${Date.now()}`,
+      timestamp: `${new Date().toLocaleDateString()} ${getNowTimestamp()}`,
+      type: 'donate',
+      description: `Dispatched ${newDispatch.totalKg} kg (${newDispatch.mealsRescued} meals) to ${newDispatch.recipientPartner}`,
+      impactNote: `Rescue Manifest #${newDispatch.trackingCode} (SDG 2 & 13)`,
+    };
+    setActivityLog((prev) => [logEntry, ...prev]);
+
     showNotification(`Rescue Manifest #${newDispatch.trackingCode} dispatched to ${newDispatch.recipientPartner}.`);
+  };
+
+  // Handle AI Audit completion
+  const handleAuditComplete = (audit: AgentAudit) => {
+    setLatestAudit(audit);
+    const logEntry: ActivityLogItem = {
+      id: `act-${Date.now()}`,
+      timestamp: `${new Date().toLocaleDateString()} ${getNowTimestamp()}`,
+      type: 'audit',
+      description: 'Completed comprehensive AI inventory audit and spoilage hazard assessment',
+      impactNote: `Generated actionable SDG 12.3 directives`,
+    };
+    setActivityLog((prev) => [logEntry, ...prev]);
+    showNotification('AI Inventory Audit synchronized with live compliance report.');
   };
 
   const availableItems = items.filter((i) => i.status === 'available');
@@ -182,6 +320,7 @@ export default function App() {
           wasteAversionRate={wasteAversionRate}
           onOpenQuickAdd={() => setActiveTab('ingestion')}
           onOpenAudit={() => setActiveTab('agent')}
+          onOpenReportModal={() => setIsReportModalOpen(true)}
           selectedZoneFilter={selectedZoneFilter}
           setSelectedZoneFilter={setSelectedZoneFilter}
         />
@@ -224,6 +363,10 @@ export default function App() {
                   setActiveTab('agent');
                   setIsMobileSidebarOpen(false);
                 }}
+                onOpenReportModal={() => {
+                  setIsReportModalOpen(true);
+                  setIsMobileSidebarOpen(false);
+                }}
                 selectedZoneFilter={selectedZoneFilter}
                 setSelectedZoneFilter={(zone) => {
                   setSelectedZoneFilter(zone);
@@ -242,6 +385,7 @@ export default function App() {
           onOpenQuickAdd={() => setActiveTab('ingestion')}
           onOpenVisionScan={() => setIsVisionScanOpen(true)}
           onToggleMobileSidebar={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+          onOpenReportModal={() => setIsReportModalOpen(true)}
           criticalCount={criticalCount}
         />
 
@@ -267,6 +411,7 @@ export default function App() {
               onOpenQuickAdd={() => setActiveTab('ingestion')}
               onOpenVisionScan={() => setIsVisionScanOpen(true)}
               onOpenAudit={() => setActiveTab('agent')}
+              onOpenReportModal={() => setIsReportModalOpen(true)}
               onConsumeItem={handleConsumeItem}
               onDonateItem={handleDonateItem}
               onExtendFreezer={handleExtendFreezer}
@@ -316,6 +461,8 @@ export default function App() {
                 if (target) handleDonateItem(target);
               }}
               onExtendFreezerByName={handleExtendFreezerByName}
+              latestAudit={latestAudit}
+              onAuditComplete={handleAuditComplete}
             />
           )}
         </main>
@@ -329,6 +476,12 @@ export default function App() {
               <span>UN SDG Target 12.3 & SDG 2 Framework</span>
             </div>
             <div className="flex items-center gap-3">
+              <button
+                onClick={() => setIsReportModalOpen(true)}
+                className="hover:text-slate-900 transition-colors font-medium text-emerald-700"
+              >
+                Download Audit Report
+              </button>
               <button
                 onClick={() => setActiveTab('sdg')}
                 className="hover:text-slate-900 transition-colors"
@@ -357,6 +510,16 @@ export default function App() {
         isOpen={isVisionScanOpen}
         onClose={() => setIsVisionScanOpen(false)}
         onAddItems={handleAddItems}
+      />
+
+      {/* Summary Report & SDG Audit Modal (Fully Reactive to all operations) */}
+      <SummaryReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        items={items}
+        dispatches={dispatches}
+        activityLog={activityLog}
+        latestAudit={latestAudit}
       />
     </div>
   );
