@@ -519,8 +519,13 @@ async function setupVite() {
   }
 }
 
-setupVite().then(() => {
-  app.listen(port, '0.0.0.0', () => {
-    console.log(`CibusGuard Server running on http://0.0.0.0:${port}`);
+if (!process.env.VERCEL) {
+  setupVite().then(() => {
+    app.listen(port, '0.0.0.0', () => {
+      console.log(`CibusGuard Server running on http://0.0.0.0:${port}`);
+    });
   });
-});
+}
+
+export default app;
+
