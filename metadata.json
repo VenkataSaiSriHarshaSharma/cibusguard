@@ -1,0 +1,6 @@
+{
+  "name": "CibusGuard Food Monitoring Agent",
+  "description": "Intelligent food inventory monitoring agent tracking quantities, expiry dates, multi-channel kitchen and system inputs, and UN SDG 2, 12, and 13 impact.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
